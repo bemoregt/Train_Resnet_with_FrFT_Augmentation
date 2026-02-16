@@ -27,29 +27,27 @@ def frft_2d(image, alpha_x, alpha_y):
     return temp
 
 
+_frft_eigen_cache = {}
+
 def frft_1d(x, alpha):
     """1D Fractional Fourier Transform using eigendecomposition"""
     N = len(x)
-    
-    # DFT 행렬 생성
-    n = torch.arange(N, dtype=torch.float32)
-    k = n.reshape((N, 1))
-    M = torch.exp(-2j * np.pi * k * n / N)
-    
-    # NumPy로 변환하여 고유값 분해
-    M_np = M.numpy()
-    eigenvalues, eigenvectors = eig(M_np)
-    
-    # Fractional power 적용
+
+    # 고유값 분해 결과는 N에만 의존하므로 한 번만 계산 후 캐시
+    if N not in _frft_eigen_cache:
+        n = torch.arange(N, dtype=torch.float32)
+        k = n.reshape((N, 1))
+        M = torch.exp(-2j * np.pi * k * n / N).numpy()
+        eigenvalues, eigenvectors = eig(M)
+        _frft_eigen_cache[N] = (eigenvalues, eigenvectors, np.linalg.inv(eigenvectors))
+
+    eigenvalues, eigenvectors, eigenvectors_inv = _frft_eigen_cache[N]
+
+    # Fractional power 적용 후 행렬 재구성
     eigenvalues_alpha = np.power(eigenvalues, alpha)
-    
-    # FrFT 행렬 재구성
-    M_alpha = eigenvectors @ np.diag(eigenvalues_alpha) @ np.linalg.inv(eigenvectors)
-    
-    # 입력 신호에 적용
-    x_np = x.numpy()
-    result = M_alpha @ x_np
-    
+    M_alpha = eigenvectors @ (eigenvalues_alpha[:, None] * eigenvectors_inv)
+
+    result = M_alpha @ x.numpy()
     return torch.from_numpy(result.real.astype(np.float32))
 
 
@@ -161,12 +159,17 @@ def train_model(model, train_loader, test_loader, criterion, optimizer, device, 
 
 def main():
     # 하이퍼파라미터
-    batch_size = 4
+    batch_size = 128
     learning_rate = 0.1
     epochs = 20
-    
+
     # 디바이스 설정
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    if torch.cuda.is_available():
+        device = torch.device('cuda')
+    elif torch.backends.mps.is_available():
+        device = torch.device('mps')
+    else:
+        device = torch.device('cpu')
     print(f'Using device: {device}')
     
     # 데이터 전처리 - FrFT 오그멘테이션 포함
