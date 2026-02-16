@@ -5,6 +5,8 @@ Experiments applying **Fractional Fourier Transform (FrFT)** to deep learning �
 1. **FrFT as a Loss Function** (`frft_resnet18.py`, `frft_resnet2.py`, `frft_resnet3.py`) — FrFT applied to logits at training time to enrich supervision signal, evaluated on the Hymenoptera binary classification task.
 2. **FrFT as Data Augmentation** (`train_resnet_FrFTAugment.py`) — FrFT applied to input images during training as a stochastic augmentation, evaluated on CIFAR-10.
 
+![이미지 스펙트럼 예시](https://github.com/bemoregt/Train_Resnet_with_FrFT_Augmentation/blob/main/ScrShot%2014.png)
+
 ---
 
 ## Background: Fractional Fourier Transform
